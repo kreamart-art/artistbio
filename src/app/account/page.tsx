@@ -85,16 +85,23 @@ export default async function AccountPage({
         >
           ARTISTBIO
         </Link>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
-        >
-          <Button variant="ghost" size="sm" type="submit">
-            Uitloggen
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin">Admin</Link>
+            </Button>
+          )}
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/" });
+            }}
+          >
+            <Button variant="ghost" size="sm" type="submit">
+              Uitloggen
+            </Button>
+          </form>
+        </div>
       </div>
 
       <h1 className="display-serif mb-2 text-3xl">Account</h1>
