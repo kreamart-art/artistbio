@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { generations } from "@/db/schema";
+import { isAdminEmail } from "@/lib/admin";
 import {
   PASS_COOKIE_NAME,
   refundPass,
@@ -30,7 +31,8 @@ function sse(data: Record<string, unknown>): string {
 
 type Reservation =
   | { kind: "user"; userId: string }
-  | { kind: "pass"; code: string };
+  | { kind: "pass"; code: string }
+  | { kind: "admin"; userId: string };
 
 export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -48,20 +50,30 @@ export async function POST(req: Request) {
     return Response.json({ error: "Ongeldige aanvraag." }, { status: 400 });
   }
 
-  // Probeer eerst pass-cookie, dan ingelogde gebruiker.
   const session = await auth();
   const passCode = cookies().get(PASS_COOKIE_NAME)?.value;
 
   let reservation: Reservation | null = null;
   if (session?.user?.id) {
-    const ok = await tryDeductCredit(session.user.id);
-    if (!ok) {
-      return Response.json(
-        { error: "Je hebt geen credits meer. Koop credits om door te gaan." },
-        { status: 402 },
-      );
+    // Admins bypassen credit-checks — onbeperkt genereren voor de eigenaar.
+    if (isAdminEmail(session.user.email)) {
+      reservation = { kind: "admin", userId: session.user.id };
+    } else {
+      const ok = await tryDeductCredit(session.user.id);
+      if (ok) {
+        reservation = { kind: "user", userId: session.user.id };
+      } else if (passCode) {
+        // Fallback: gebruiker heeft 0 credits maar wel een pass-cookie.
+        const passOk = await tryUsePass(passCode);
+        if (passOk) reservation = { kind: "pass", code: passCode };
+      }
+      if (!reservation) {
+        return Response.json(
+          { error: "Je hebt geen credits meer. Koop credits om door te gaan." },
+          { status: 402 },
+        );
+      }
     }
-    reservation = { kind: "user", userId: session.user.id };
   } else if (passCode) {
     const ok = await tryUsePass(passCode);
     if (!ok) {
@@ -125,12 +137,13 @@ export async function POST(req: Request) {
         if (failed) {
           if (reservation.kind === "user") {
             await refundCredit(reservation.userId).catch(() => {});
-          } else {
+          } else if (reservation.kind === "pass") {
             await refundPass(reservation.code).catch(() => {});
           }
+          // admin: niets terug te draaien
         } else if (collected.trim()) {
           const { bio, supplement } = splitBio(collected);
-          if (reservation.kind === "user") {
+          if (reservation.kind === "user" || reservation.kind === "admin") {
             await saveGeneration(
               reservation.userId,
               answers,
