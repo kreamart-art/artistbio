@@ -54,7 +54,7 @@ async function redeemCode(formData: FormData) {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: { redeemed?: string };
+  searchParams: { redeemed?: string; purchased?: string };
 }) {
   const session = await auth();
   if (!session?.user) redirect("/signin?from=/account");
@@ -94,6 +94,18 @@ export default async function AccountPage({
       <h1 className="display-serif mb-2 text-3xl">Account</h1>
       <p className="mb-8 text-muted-foreground">{session.user.email}</p>
 
+      {searchParams.purchased === "1" && (
+        <div className="mb-6 rounded-md border border-emerald-500/40 bg-emerald-500/5 p-4 text-sm">
+          <span className="font-medium text-emerald-500">
+            Aankoop gelukt.
+          </span>{" "}
+          <span className="text-muted-foreground">
+            Credits worden binnen enkele seconden toegevoegd — refresh de pagina
+            als de balans nog niet bijgewerkt is.
+          </span>
+        </div>
+      )}
+
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Credits</CardTitle>
@@ -107,7 +119,7 @@ export default async function AccountPage({
             <Button asChild>
               <Link href="/new">Nieuwe bio</Link>
             </Button>
-            <Button asChild variant="outline" disabled>
+            <Button asChild variant="outline">
               <Link href="/buy">Credits kopen</Link>
             </Button>
           </div>
