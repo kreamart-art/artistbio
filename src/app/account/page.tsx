@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isAdminEmail, isStripeEnabled } from "@/lib/admin";
 
 async function redeemCode(formData: FormData) {
   "use server";
@@ -62,13 +63,14 @@ export default async function AccountPage({
   const row = await db
     .select({
       credits: users.credits,
-      isAdmin: users.isAdmin,
       isCollective: users.isCollective,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
     .limit(1);
-  const { credits = 0, isAdmin = false, isCollective = false } = row[0] ?? {};
+  const { credits = 0, isCollective = false } = row[0] ?? {};
+  const isAdmin = isAdminEmail(session.user.email);
+  const stripeOn = isStripeEnabled();
 
   return (
     <main className="container max-w-2xl py-10">
@@ -119,9 +121,11 @@ export default async function AccountPage({
             <Button asChild>
               <Link href="/new">Nieuwe bio</Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/buy">Credits kopen</Link>
-            </Button>
+            {stripeOn && (
+              <Button asChild variant="outline">
+                <Link href="/buy">Credits kopen</Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

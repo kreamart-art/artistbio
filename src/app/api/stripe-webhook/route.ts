@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 
 import { db } from "@/db";
 import { purchases, users } from "@/db/schema";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const raw = await req.text();
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(raw, sig, secret);
+    event = getStripe().webhooks.constructEvent(raw, sig, secret);
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Onbekende fout.";

@@ -4,12 +4,20 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { purchases, users } from "@/db/schema";
 import { getPackage } from "@/lib/credit-packages";
-import { stripe } from "@/lib/stripe";
+import { isStripeEnabled } from "@/lib/admin";
+import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  if (!isStripeEnabled()) {
+    return Response.json(
+      { error: "Credits kopen is nog niet beschikbaar." },
+      { status: 503 },
+    );
+  }
+
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: "Niet ingelogd." }, { status: 401 });
@@ -48,7 +56,7 @@ export async function POST(req: Request) {
     .returning({ id: purchases.id });
   const purchaseId = purchase[0]!.id;
 
-  const checkout = await stripe.checkout.sessions.create({
+  const checkout = await getStripe().checkout.sessions.create({
     mode: "payment",
     customer_email: email,
     line_items: [

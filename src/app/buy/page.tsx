@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { isStripeEnabled } from "@/lib/admin";
 import {
   CREDIT_PACKAGES,
   formatEuro,
@@ -24,6 +25,7 @@ export default async function BuyPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/signin?from=/buy");
+  if (!isStripeEnabled()) redirect("/account");
 
   return (
     <main className="container max-w-4xl py-10">
