@@ -84,9 +84,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="container py-8 text-sm text-muted-foreground">
-        Gemaakt met de Anthropic Claude API.
-      </footer>
     </main>
   );
 }

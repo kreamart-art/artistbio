@@ -1,11 +1,28 @@
-/** Whether the given email is in the ADMIN_EMAILS env list (comma-separated). */
-export function isAdminEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  const list = (process.env.ADMIN_EMAILS ?? "")
+function parseEmailList(raw: string | undefined): string[] {
+  return (raw ?? "")
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
-  return list.includes(email.toLowerCase());
+}
+
+/** Whether the given email is in the ADMIN_EMAILS env list (comma-separated). */
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return parseEmailList(process.env.ADMIN_EMAILS).includes(email.toLowerCase());
+}
+
+/** Whether the given email is in the COLLECTIVE_EMAILS env list (comma-separated). */
+export function isCollectiveEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return parseEmailList(process.env.COLLECTIVE_EMAILS).includes(
+    email.toLowerCase(),
+  );
+}
+
+/** Hoeveel credits een collectief-lid krijgt bij eerste login. Default 1. */
+export function collectiveInitialCredits(): number {
+  const n = Number(process.env.COLLECTIVE_INITIAL_CREDITS ?? "1");
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
 }
 
 /** True if Stripe is configured (used to gate the buy flow in the UI). */

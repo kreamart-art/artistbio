@@ -10,6 +10,7 @@ import {
   users,
   verificationTokens,
 } from "@/db/schema";
+import { ensureCollectiveInitialized } from "@/lib/credits";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -24,4 +25,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       from: process.env.EMAIL_FROM ?? "ArtistBio <onboarding@resend.dev>",
     }),
   ],
+  events: {
+    async signIn({ user }) {
+      if (user.id && user.email) {
+        await ensureCollectiveInitialized(user.id, user.email).catch(() => {});
+      }
+    },
+  },
 });

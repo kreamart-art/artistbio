@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { isAdminEmail, isStripeEnabled } from "@/lib/admin";
+import { ensureCollectiveInitialized } from "@/lib/credits";
 
 async function redeemCode(formData: FormData) {
   "use server";
@@ -59,6 +60,9 @@ export default async function AccountPage({
 }) {
   const session = await auth();
   if (!session?.user) redirect("/signin?from=/account");
+
+  // Auto-grant collectief leden hun initiële credits (idempotent).
+  await ensureCollectiveInitialized(session.user.id, session.user.email);
 
   const row = await db
     .select({
