@@ -1,10 +1,12 @@
 "use client";
 
+import type { Locale } from "@/lib/i18n";
 import {
   LANGUAGE_OPTIONS,
   LENGTH_OPTIONS,
   PERSPECTIVE_OPTIONS,
   TONE_OPTIONS,
+  t,
 } from "@/lib/questionnaire";
 import type { OutputSettings } from "@/lib/types";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,13 @@ interface Props {
   /** Compacte rij-indeling (voor /result). Standaard rasterindeling. */
   layout?: "grid" | "row";
   disabled?: boolean;
+  locale: Locale;
+  labels: {
+    language: string;
+    length: string;
+    tone: string;
+    perspective: string;
+  };
 }
 
 export function OutputSettingsControls({
@@ -29,6 +38,8 @@ export function OutputSettingsControls({
   onChange,
   layout = "grid",
   disabled = false,
+  locale,
+  labels,
 }: Props) {
   const wrapper =
     layout === "row"
@@ -39,7 +50,7 @@ export function OutputSettingsControls({
   return (
     <div className={wrapper}>
       <div className={itemClass}>
-        <Label>Taal</Label>
+        <Label>{labels.language}</Label>
         <Select
           value={settings.language}
           disabled={disabled}
@@ -53,7 +64,7 @@ export function OutputSettingsControls({
           <SelectContent>
             {LANGUAGE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -61,7 +72,7 @@ export function OutputSettingsControls({
       </div>
 
       <div className={itemClass}>
-        <Label>Lengte</Label>
+        <Label>{labels.length}</Label>
         <Select
           value={settings.length}
           disabled={disabled}
@@ -75,7 +86,7 @@ export function OutputSettingsControls({
           <SelectContent>
             {LENGTH_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -83,7 +94,7 @@ export function OutputSettingsControls({
       </div>
 
       <div className={itemClass}>
-        <Label>Toon</Label>
+        <Label>{labels.tone}</Label>
         <Select
           value={settings.tone}
           disabled={disabled}
@@ -97,7 +108,7 @@ export function OutputSettingsControls({
           <SelectContent>
             {TONE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label, locale)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -105,7 +116,7 @@ export function OutputSettingsControls({
       </div>
 
       <div className={itemClass}>
-        <Label>Perspectief</Label>
+        <Label>{labels.perspective}</Label>
         <Select
           value={settings.perspective}
           disabled={disabled}
@@ -122,7 +133,7 @@ export function OutputSettingsControls({
           <SelectContent>
             {PERSPECTIVE_OPTIONS.map((o) => (
               <SelectItem key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label, locale)}
               </SelectItem>
             ))}
           </SelectContent>

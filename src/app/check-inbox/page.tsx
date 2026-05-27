@@ -8,8 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { getStrings } from "@/lib/get-locale";
 
 export default function CheckInboxPage() {
+  const strings = getStrings();
+  const S = strings.checkInbox;
   return (
     <main className="container flex min-h-screen max-w-md flex-col items-center justify-center py-12">
       <Link
@@ -21,20 +24,13 @@ export default function CheckInboxPage() {
 
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="display-serif text-2xl">
-            Check je inbox
-          </CardTitle>
-          <CardDescription>
-            We hebben je een inloglink gestuurd. Open de e-mail om door te gaan.
-          </CardDescription>
+          <CardTitle className="display-serif text-2xl">{S.title}</CardTitle>
+          <CardDescription>{S.desc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
-          <p>
-            Klik op de link in de e-mail om door te gaan naar ArtistBio. Geen
-            e-mail ontvangen? Check je spam-map.
-          </p>
+          <p>{S.body}</p>
           <Button asChild variant="outline" className="w-full">
-            <Link href="/signin">Andere e-mail gebruiken</Link>
+            <Link href="/signin">{S.useOther}</Link>
           </Button>
         </CardContent>
       </Card>

@@ -12,18 +12,20 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getStrings } from "@/lib/get-locale";
 
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: { from?: string; sent?: string; error?: string };
+  searchParams: { from?: string; error?: string };
 }) {
   const session = await auth();
   if (session?.user) {
     redirect(searchParams.from || "/account");
   }
 
-  const sent = searchParams.sent === "1";
+  const strings = getStrings();
+  const S = strings.signinPage;
   const error = searchParams.error;
 
   async function sendLink(formData: FormData) {
@@ -47,52 +49,32 @@ export default async function SignInPage({
 
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="display-serif text-2xl">
-            {sent ? "Check je inbox" : "Inloggen of registreren"}
-          </CardTitle>
-          <CardDescription>
-            {sent
-              ? "We hebben je een inloglink gestuurd. Open de e-mail om door te gaan."
-              : "Vul je e-mailadres in. We sturen je een magic link om in te loggen."}
-          </CardDescription>
+          <CardTitle className="display-serif text-2xl">{S.title}</CardTitle>
+          <CardDescription>{S.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          {sent ? (
-            <div className="space-y-4 text-sm text-muted-foreground">
-              <p>
-                Klik op de link in de e-mail om door te gaan naar ArtistBio.
-                Geen e-mail ontvangen? Check je spam-map.
-              </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/signin">Andere e-mail gebruiken</Link>
-              </Button>
+          <form action={sendLink} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">{S.emailLabel}</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoFocus
+                placeholder="jij@voorbeeld.nl"
+              />
             </div>
-          ) : (
-            <form action={sendLink} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mailadres</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  autoFocus
-                  placeholder="jij@voorbeeld.nl"
-                />
-              </div>
-              {error && (
-                <p className="text-sm text-destructive">
-                  Er ging iets mis. Probeer het opnieuw.
-                </p>
-              )}
-              <Button type="submit" className="w-full">
-                Stuur magic link
-              </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Door door te gaan ga je akkoord met het gebruik van ArtistBio.
-              </p>
-            </form>
-          )}
+            {error && (
+              <p className="text-sm text-destructive">{S.genericError}</p>
+            )}
+            <Button type="submit" className="w-full">
+              {S.submit}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              {S.legalNote}
+            </p>
+          </form>
         </CardContent>
       </Card>
     </main>

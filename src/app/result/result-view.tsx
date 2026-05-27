@@ -1,0 +1,328 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Copy,
+  Download,
+  Loader2,
+  Pencil,
+  RotateCcw,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { OutputSettingsControls } from "@/components/output-settings";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { streamBio } from "@/lib/generate-client";
+import type { Locale, Strings } from "@/lib/i18n";
+import { splitBio } from "@/lib/prompt";
+import { loadDraft, saveDraft } from "@/lib/storage";
+import { type Answers, type OutputSettings } from "@/lib/types";
+
+type Status = "loading" | "streaming" | "done" | "error";
+
+interface SettingsLabels {
+  language: string;
+  length: string;
+  tone: string;
+  perspective: string;
+}
+
+export function ResultView({
+  locale,
+  strings,
+  settingsLabels,
+}: {
+  locale: Locale;
+  strings: Strings["resultPage"];
+  settingsLabels: SettingsLabels;
+}) {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [answers, setAnswers] = useState<Answers>({});
+  const [settings, setSettings] = useState<OutputSettings | null>(null);
+  const [text, setText] = useState("");
+  const [status, setStatus] = useState<Status>("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const abortRef = useRef<AbortController | null>(null);
+
+  const generate = useCallback(
+    async (a: Answers, s: OutputSettings) => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setText("");
+      setErrorMessage("");
+      setStatus("streaming");
+
+      try {
+        await streamBio(
+          { answers: a, settings: s },
+          {
+            signal: controller.signal,
+            onChunk: (chunk) => setText((prev) => prev + chunk),
+          },
+        );
+        if (!controller.signal.aborted) {
+          setStatus("done");
+          router.refresh();
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const message =
+          err instanceof Error ? err.message : strings.genericError;
+        setStatus("error");
+        setErrorMessage(message);
+        toast.error(message);
+      }
+    },
+    [router, strings.genericError],
+  );
+
+  useEffect(() => {
+    const draft = loadDraft();
+    setReady(true);
+    if (!draft || !draft.answers.naam?.trim()) {
+      setHasDraft(false);
+      return;
+    }
+    setHasDraft(true);
+    setAnswers(draft.answers);
+    setSettings(draft.settings);
+    void generate(draft.answers, draft.settings);
+    return () => abortRef.current?.abort();
+  }, [generate]);
+
+  function applySettings(next: OutputSettings) {
+    setSettings(next);
+    saveDraft({ answers, settings: next });
+    void generate(answers, next);
+  }
+
+  const { bio, supplement } = splitBio(text);
+  const isBusy = status === "streaming" || status === "loading";
+
+  async function copyBio() {
+    if (!bio) return;
+    try {
+      await navigator.clipboard.writeText(bio);
+      setCopied(true);
+      toast.success(strings.copied);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error(strings.copyFailed);
+    }
+  }
+
+  function downloadBio() {
+    if (!bio) return;
+    const name = answers.naam?.trim() || "biografie";
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const blob = new Blob([bio], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${slug || "biografie"}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (ready && !hasDraft) {
+    return (
+      <main className="container flex min-h-screen max-w-xl flex-col items-center justify-center text-center">
+        <h1 className="display-serif text-3xl">{strings.noDataTitle}</h1>
+        <p className="mt-3 text-muted-foreground">{strings.noDataBody}</p>
+        <Button asChild className="mt-6">
+          <Link href="/new">{locale === "en" ? "Start your bio" : "Start je bio"}</Link>
+        </Button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container max-w-3xl py-10">
+      <div className="mb-8 flex items-center justify-between">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/new">
+            <ArrowLeft />
+            {strings.adjustQuestionnaire}
+          </Link>
+        </Button>
+        <span className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          ArtistBio
+        </span>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Pencil className="h-4 w-4" />
+            {strings.toneLengthTitle}
+          </CardTitle>
+          <CardDescription>{strings.toneLengthDesc}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {settings && (
+            <OutputSettingsControls
+              settings={settings}
+              onChange={applySettings}
+              layout="row"
+              disabled={isBusy}
+              locale={locale}
+              labels={settingsLabels}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
+          <CardTitle className="display-serif text-2xl">
+            {strings.bioTitle}
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyBio}
+              disabled={!bio || isBusy}
+            >
+              {copied ? <Check /> : <Copy />}
+              {strings.copy}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadBio}
+              disabled={!bio || isBusy}
+            >
+              <Download />
+              .txt
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => settings && generate(answers, settings)}
+              disabled={isBusy || !settings}
+            >
+              <RotateCcw />
+              {strings.regenerate}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {status === "error" ? (
+            (() => {
+              const passDepleted = /persoonlijke link is op|personal link is used up/i.test(
+                errorMessage,
+              );
+              const noCredits = /Koop credits|out of credits/i.test(errorMessage);
+              const title = passDepleted
+                ? strings.passDepletedTitle
+                : noCredits
+                  ? strings.noCreditsTitle
+                  : strings.generationFailed;
+              return (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium text-destructive">
+                        {title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {errorMessage || strings.genericError}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    {passDepleted ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/">{strings.toHome}</Link>
+                      </Button>
+                    ) : noCredits ? (
+                      <Button asChild size="sm">
+                        <Link href="/account">{strings.toAccount}</Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          settings && generate(answers, settings)
+                        }
+                        disabled={!settings}
+                      >
+                        <RotateCcw />
+                        {strings.retry}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
+          ) : status === "loading" || (status === "streaming" && !bio) ? (
+            <div className="flex items-center gap-3 py-8 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span>{strings.writing}</span>
+            </div>
+          ) : (
+            <article className="space-y-4 text-[15px] leading-relaxed">
+              {bio
+                .split(/\n{2,}/)
+                .filter(Boolean)
+                .map((para, i) => (
+                  <p key={i} className="whitespace-pre-line">
+                    {para}
+                  </p>
+                ))}
+              {status === "streaming" && (
+                <span className="inline-block h-4 w-2 animate-pulse bg-foreground align-middle" />
+              )}
+            </article>
+          )}
+        </CardContent>
+      </Card>
+
+      {supplement && (
+        <Card className="mt-6 border-dashed">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">
+              {strings.supplementTitle}
+            </CardTitle>
+            <CardDescription>{strings.supplementDesc}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              {supplement
+                .split("\n")
+                .map((l) => l.replace(/^[-*•\d.)\s]+/, "").trim())
+                .filter(Boolean)
+                .map((item, i) => (
+                  <li key={i} className="flex gap-2">
+                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted-foreground" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+    </main>
+  );
+}

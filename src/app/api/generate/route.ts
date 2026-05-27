@@ -15,6 +15,8 @@ import {
   saveGeneration,
   tryDeductCredit,
 } from "@/lib/credits";
+import { stringsFor } from "@/lib/get-locale";
+import { LOCALE_COOKIE, normalizeLocale } from "@/lib/i18n";
 import { buildUserMessage, splitBio, SYSTEM_PROMPT } from "@/lib/prompt";
 import { DEFAULT_SETTINGS, type GenerateRequest } from "@/lib/types";
 
@@ -35,23 +37,24 @@ type Reservation =
   | { kind: "admin"; userId: string };
 
 export async function POST(req: Request) {
+  const cookieJar = cookies();
+  const locale = normalizeLocale(cookieJar.get(LOCALE_COOKIE)?.value);
+  const E = stringsFor(locale).apiErrors;
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return Response.json(
-      { error: "Serverconfiguratie ontbreekt: ANTHROPIC_API_KEY is niet ingesteld." },
-      { status: 500 },
-    );
+    return Response.json({ error: E.configMissing }, { status: 500 });
   }
 
   let body: GenerateRequest;
   try {
     body = (await req.json()) as GenerateRequest;
   } catch {
-    return Response.json({ error: "Ongeldige aanvraag." }, { status: 400 });
+    return Response.json({ error: E.invalidRequest }, { status: 400 });
   }
 
   const session = await auth();
-  const passCode = cookies().get(PASS_COOKIE_NAME)?.value;
+  const passCode = cookieJar.get(PASS_COOKIE_NAME)?.value;
 
   let reservation: Reservation | null = null;
   if (session?.user?.id) {
@@ -68,26 +71,17 @@ export async function POST(req: Request) {
         if (passOk) reservation = { kind: "pass", code: passCode };
       }
       if (!reservation) {
-        return Response.json(
-          { error: "Je hebt geen credits meer. Koop credits om door te gaan." },
-          { status: 402 },
-        );
+        return Response.json({ error: E.noCredits }, { status: 402 });
       }
     }
   } else if (passCode) {
     const ok = await tryUsePass(passCode);
     if (!ok) {
-      return Response.json(
-        { error: "Je persoonlijke link is op. Vraag het collectief om een nieuwe." },
-        { status: 402 },
-      );
+      return Response.json({ error: E.passDepleted }, { status: 402 });
     }
     reservation = { kind: "pass", code: passCode };
   } else {
-    return Response.json(
-      { error: "Geen toegang. Open je persoonlijke link of log in." },
-      { status: 401 },
-    );
+    return Response.json({ error: E.noAccess }, { status: 401 });
   }
 
   const answers = body.answers ?? {};
@@ -127,9 +121,7 @@ export async function POST(req: Request) {
       } catch (err) {
         failed = true;
         const message =
-          err instanceof Error
-            ? err.message
-            : "Onbekende fout bij het genereren.";
+          err instanceof Error ? err.message : E.unknown;
         controller.enqueue(encoder.encode(sse({ type: "error", message })));
       } finally {
         controller.close();

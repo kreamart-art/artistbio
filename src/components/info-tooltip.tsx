@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 
-export function InfoTooltip({ text }: { text: string }) {
+export function InfoTooltip({
+  text,
+  label = "Meer info",
+}: {
+  text: string;
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -49,7 +55,7 @@ export function InfoTooltip({ text }: { text: string }) {
         onClick={() => setOpen((o) => !o)}
         onFocus={show}
         onBlur={hide}
-        aria-label="Meer info"
+        aria-label={label}
         aria-expanded={open}
         className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground"
       >

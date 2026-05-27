@@ -1,12 +1,15 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { getStrings } from "@/lib/get-locale";
 
 export default function ExpiredPage({
   searchParams,
 }: {
   searchParams: { reason?: string };
 }) {
+  const strings = getStrings();
+  const S = strings.expired;
   const depleted = searchParams.reason === "depleted";
   return (
     <main className="container flex min-h-screen max-w-md flex-col items-center justify-center text-center">
@@ -14,15 +17,13 @@ export default function ExpiredPage({
         ARTISTBIO
       </span>
       <h1 className="display-serif mb-3 text-3xl">
-        {depleted ? "Link is op" : "Link werkt niet"}
+        {depleted ? S.depletedTitle : S.unknownTitle}
       </h1>
       <p className="mb-6 text-muted-foreground">
-        {depleted
-          ? "Deze persoonlijke link is al gebruikt. Vraag het artnomad-collectief om een nieuwe."
-          : "We konden deze link niet vinden. Controleer of je de juiste link hebt gekopieerd."}
+        {depleted ? S.depletedBody : S.unknownBody}
       </p>
       <Button asChild variant="outline">
-        <Link href="/">Terug naar de homepage</Link>
+        <Link href="/">{S.backHome}</Link>
       </Button>
     </main>
   );
