@@ -99,13 +99,26 @@ export const generations = pgTable("generation", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "set null" }),
+  passCode: text("pass_code"),
   inviteCodeUsed: text("invite_code_used"),
   answers: jsonb("answers"),
   settings: jsonb("settings"),
   bio: text("bio"),
   supplement: text("supplement"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+/**
+ * Persoonlijke toegangslinks voor leden — geen account nodig.
+ * Een lid klikt op /start/[code], krijgt een cookie en kan bio maken
+ * totdat `uses >= maxUses`.
+ */
+export const bioPasses = pgTable("bio_pass", {
+  code: text("code").primaryKey(),
+  maxUses: integer("max_uses").default(1).notNull(),
+  uses: integer("uses").default(0).notNull(),
+  name: text("name"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  lastUsedAt: timestamp("last_used_at", { mode: "date" }),
 });

@@ -1,12 +1,16 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Coins } from "lucide-react";
 
 import { auth } from "@/auth";
+import { PASS_COOKIE_NAME } from "@/lib/bio-passes";
 import { getUserBalance } from "@/lib/credits";
 
 export async function AccountChip() {
   const session = await auth();
   if (!session?.user?.id) {
+    const hasPass = Boolean(cookies().get(PASS_COOKIE_NAME)?.value);
+    if (hasPass) return null;
     return (
       <Link
         href="/signin"

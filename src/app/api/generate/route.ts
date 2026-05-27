@@ -1,6 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { cookies } from "next/headers";
 
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { generations } from "@/db/schema";
+import {
+  PASS_COOKIE_NAME,
+  refundPass,
+  tryUsePass,
+} from "@/lib/bio-passes";
 import {
   refundCredit,
   saveGeneration,
@@ -20,13 +28,11 @@ function sse(data: Record<string, unknown>): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-export async function POST(req: Request) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return Response.json({ error: "Niet ingelogd." }, { status: 401 });
-  }
-  const userId = session.user.id;
+type Reservation =
+  | { kind: "user"; userId: string }
+  | { kind: "pass"; code: string };
 
+export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json(
@@ -42,11 +48,33 @@ export async function POST(req: Request) {
     return Response.json({ error: "Ongeldige aanvraag." }, { status: 400 });
   }
 
-  const deducted = await tryDeductCredit(userId);
-  if (!deducted) {
+  // Probeer eerst pass-cookie, dan ingelogde gebruiker.
+  const session = await auth();
+  const passCode = cookies().get(PASS_COOKIE_NAME)?.value;
+
+  let reservation: Reservation | null = null;
+  if (session?.user?.id) {
+    const ok = await tryDeductCredit(session.user.id);
+    if (!ok) {
+      return Response.json(
+        { error: "Je hebt geen credits meer. Koop credits om door te gaan." },
+        { status: 402 },
+      );
+    }
+    reservation = { kind: "user", userId: session.user.id };
+  } else if (passCode) {
+    const ok = await tryUsePass(passCode);
+    if (!ok) {
+      return Response.json(
+        { error: "Je persoonlijke link is op. Vraag het collectief om een nieuwe." },
+        { status: 402 },
+      );
+    }
+    reservation = { kind: "pass", code: passCode };
+  } else {
     return Response.json(
-      { error: "Je hebt geen credits meer. Koop credits om door te gaan." },
-      { status: 402 },
+      { error: "Geen toegang. Open je persoonlijke link of log in." },
+      { status: 401 },
     );
   }
 
@@ -93,17 +121,36 @@ export async function POST(req: Request) {
         controller.enqueue(encoder.encode(sse({ type: "error", message })));
       } finally {
         controller.close();
+        if (!reservation) return;
         if (failed) {
-          await refundCredit(userId).catch(() => {});
+          if (reservation.kind === "user") {
+            await refundCredit(reservation.userId).catch(() => {});
+          } else {
+            await refundPass(reservation.code).catch(() => {});
+          }
         } else if (collected.trim()) {
           const { bio, supplement } = splitBio(collected);
-          await saveGeneration(
-            userId,
-            answers,
-            settings,
-            bio,
-            supplement,
-          ).catch(() => {});
+          if (reservation.kind === "user") {
+            await saveGeneration(
+              reservation.userId,
+              answers,
+              settings,
+              bio,
+              supplement,
+            ).catch(() => {});
+          } else {
+            await db
+              .insert(generations)
+              .values({
+                userId: null,
+                passCode: reservation.code,
+                answers,
+                settings,
+                bio,
+                supplement,
+              })
+              .catch(() => {});
+          }
         }
       }
     },

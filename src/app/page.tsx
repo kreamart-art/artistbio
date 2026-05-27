@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { ArrowRight, FileText, ListChecks, Sparkles } from "lucide-react";
 
+import { auth } from "@/auth";
 import { AccountChip } from "@/components/account-chip";
 import { Button } from "@/components/ui/button";
+import { PASS_COOKIE_NAME } from "@/lib/bio-passes";
 
 const STEPS = [
   {
@@ -12,7 +15,7 @@ const STEPS = [
   },
   {
     icon: Sparkles,
-    title: "Laat Claude schrijven",
+    title: "Laat de AI schrijven",
     body: "Een professionele biografie in jouw gekozen toon, lengte, taal en perspectief.",
   },
   {
@@ -22,7 +25,11 @@ const STEPS = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth();
+  const hasPass = Boolean(cookies().get(PASS_COOKIE_NAME)?.value);
+  const hasAccess = Boolean(session?.user) || hasPass;
+
   return (
     <main className="relative flex min-h-screen flex-col">
       <header className="container flex items-center justify-between py-6">
@@ -47,17 +54,29 @@ export default function HomePage() {
               professionele biografie voor beeldend kunstenaars en muzikanten —
               klaar voor galeries, festivals, persdossiers en je eigen site.
             </p>
-            <div className="flex flex-wrap items-center gap-4">
-              <Button asChild size="lg">
-                <Link href="/new">
-                  Start je bio
-                  <ArrowRight />
-                </Link>
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Account in 30 sec · betaal alleen voor wat je gebruikt
-              </span>
-            </div>
+            {hasAccess ? (
+              <div className="flex flex-wrap items-center gap-4">
+                <Button asChild size="lg">
+                  <Link href="/new">
+                    Start je bio
+                    <ArrowRight />
+                  </Link>
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Klaar in enkele minuten
+                </span>
+              </div>
+            ) : (
+              <div className="max-w-md rounded-lg border border-border bg-card/40 p-5">
+                <p className="text-sm font-medium">
+                  Heb je een persoonlijke link?
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Open de link die je van het artnomad-collectief hebt gekregen
+                  om te beginnen. Geen link? Stuur ons een bericht.
+                </p>
+              </div>
+            )}
           </div>
 
           <ol className="space-y-4">
@@ -83,7 +102,6 @@ export default function HomePage() {
           </ol>
         </div>
       </section>
-
     </main>
   );
 }

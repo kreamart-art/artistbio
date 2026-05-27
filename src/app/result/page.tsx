@@ -212,14 +212,20 @@ export default function ResultPage() {
         <CardContent>
           {status === "error" ? (
             (() => {
+              const passDepleted = /persoonlijke link is op/i.test(errorMessage);
               const noCredits = /Koop credits/.test(errorMessage);
+              const title = passDepleted
+                ? "Link is op"
+                : noCredits
+                  ? "Geen credits meer"
+                  : "Genereren mislukt";
               return (
                 <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
                   <div className="flex items-start gap-3">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                     <div className="flex-1 space-y-1">
                       <p className="text-sm font-medium text-destructive">
-                        {noCredits ? "Geen credits meer" : "Genereren mislukt"}
+                        {title}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {errorMessage ||
@@ -228,7 +234,11 @@ export default function ResultPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex justify-end">
-                    {noCredits ? (
+                    {passDepleted ? (
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/">Naar de homepage</Link>
+                      </Button>
+                    ) : noCredits ? (
                       <Button asChild size="sm">
                         <Link href="/account">Naar je account</Link>
                       </Button>
