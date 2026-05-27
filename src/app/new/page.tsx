@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
+import { InfoTooltip } from "@/components/info-tooltip";
 import { OutputSettingsControls } from "@/components/output-settings";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,6 +126,7 @@ export default function NewPage() {
                   {field.required && (
                     <span className="ml-1 text-destructive">*</span>
                   )}
+                  {field.info && <InfoTooltip text={field.info} />}
                 </Label>
                 {field.type === "textarea" ? (
                   <Textarea
