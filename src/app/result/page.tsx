@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -31,6 +32,7 @@ import { type Answers, type OutputSettings } from "@/lib/types";
 type Status = "loading" | "streaming" | "done" | "error";
 
 export default function ResultPage() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [answers, setAnswers] = useState<Answers>({});
@@ -60,7 +62,10 @@ export default function ResultPage() {
             onChunk: (chunk) => setText((prev) => prev + chunk),
           },
         );
-        if (!controller.signal.aborted) setStatus("done");
+        if (!controller.signal.aborted) {
+          setStatus("done");
+          router.refresh();
+        }
       } catch (err) {
         if (controller.signal.aborted) return;
         const message =
@@ -206,30 +211,44 @@ export default function ResultPage() {
         </CardHeader>
         <CardContent>
           {status === "error" ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium text-destructive">
-                    Genereren mislukt
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {errorMessage || "Er ging iets mis. Probeer het opnieuw."}
-                  </p>
+            (() => {
+              const noCredits = /Koop credits/.test(errorMessage);
+              return (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium text-destructive">
+                        {noCredits ? "Geen credits meer" : "Genereren mislukt"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {errorMessage ||
+                          "Er ging iets mis. Probeer het opnieuw."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    {noCredits ? (
+                      <Button asChild size="sm">
+                        <Link href="/account">Naar je account</Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          settings && generate(answers, settings)
+                        }
+                        disabled={!settings}
+                      >
+                        <RotateCcw />
+                        Opnieuw proberen
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => settings && generate(answers, settings)}
-                  disabled={!settings}
-                >
-                  <RotateCcw />
-                  Opnieuw proberen
-                </Button>
-              </div>
-            </div>
+              );
+            })()
           ) : status === "loading" || (status === "streaming" && !bio) ? (
             <div className="flex items-center gap-3 py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />

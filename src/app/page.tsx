@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ArrowRight, FileText, ListChecks, Sparkles } from "lucide-react";
 
+import { AccountChip } from "@/components/account-chip";
 import { Button } from "@/components/ui/button";
 
 const STEPS = [
   {
     icon: ListChecks,
     title: "Vul de vragenlijst in",
-    body: "Zes korte secties over je werk, achtergrond en carrière. Alles tussentijds bewaard.",
+    body: "Zes korte secties over je werk, achtergrond en carrière. Tussentijds bewaard.",
   },
   {
     icon: Sparkles,
@@ -28,9 +29,7 @@ export default function HomePage() {
         <span className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           ArtistBio
         </span>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/new">Start je bio</Link>
-        </Button>
+        <AccountChip />
       </header>
 
       <section className="bg-grain flex flex-1 items-center">
@@ -56,7 +55,7 @@ export default function HomePage() {
                 </Link>
               </Button>
               <span className="text-sm text-muted-foreground">
-                Geen account nodig · klaar in enkele minuten
+                Account in 30 sec · betaal alleen voor wat je gebruikt
               </span>
             </div>
           </div>
@@ -86,8 +85,7 @@ export default function HomePage() {
       </section>
 
       <footer className="container py-8 text-sm text-muted-foreground">
-        Gemaakt met de Anthropic Claude API · je gegevens blijven lokaal in je
-        browser.
+        Gemaakt met de Anthropic Claude API.
       </footer>
     </main>
   );
